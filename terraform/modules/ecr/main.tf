@@ -9,6 +9,7 @@ data "aws_region" "current" {}
 resource "aws_ecr_repository" "api" {
   name                 = "${local.name_prefix}-api"
   image_tag_mutability = "IMMUTABLE" # Tags inmutables — evita sobreescribir una imagen en producción
+  force_delete         = true        # Permite destroy aunque haya imágenes — solo para lab
 
   # Scan automático en cada push — detecta vulnerabilidades conocidas (CVEs)
   image_scanning_configuration {
