@@ -60,12 +60,14 @@ resource "aws_s3_bucket_lifecycle_configuration" "documents" {
     id     = "expire-noncurrent-versions"
     status = "Enabled"
 
+    filter {} # Aplica a todos los objetos del bucket
+
     noncurrent_version_expiration {
-      noncurrent_days = var.noncurrent_version_expiration_days
+      noncurrent_days = 60
     }
 
     noncurrent_version_transition {
-      noncurrent_days = 7
+      noncurrent_days = 30
       storage_class   = "STANDARD_IA"
     }
   }
@@ -73,6 +75,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "documents" {
   rule {
     id     = "abort-incomplete-multipart"
     status = "Enabled"
+
+    filter {} # Aplica a todos los objetos del bucket
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 3

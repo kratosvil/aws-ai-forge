@@ -14,8 +14,3 @@ variable "versioning_enabled" {
   default     = true
 }
 
-variable "noncurrent_version_expiration_days" {
-  description = "Días antes de expirar versiones anteriores de objetos"
-  type        = number
-  default     = 30
-}

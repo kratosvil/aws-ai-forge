@@ -74,7 +74,7 @@ resource "aws_ecs_task_definition" "api" {
 
       # Health check a nivel de contenedor (complementa el del ALB)
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/health || exit 1"]
+        command     = ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:${var.container_port}/health')\" || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3

@@ -1,7 +1,7 @@
 locals {
   name_prefix       = "${var.project_name}-${var.environment}"
   function_name     = "${local.name_prefix}-bedrock-handler"
-  source_dir        = "${path.root}/../../lambda"
+  source_dir        = "${path.root}/../lambda"
   zip_output_path   = "${path.module}/bedrock_handler.zip"
   log_group_name    = "/aws/lambda/${local.function_name}"
 }

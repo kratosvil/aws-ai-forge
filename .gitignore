@@ -29,6 +29,7 @@ build/
 
 # Lambda packaging
 lambda/*.zip
+terraform/modules/lambda/*.zip
 
 # IDE
 .vscode/
