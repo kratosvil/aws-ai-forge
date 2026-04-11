@@ -11,7 +11,7 @@ locals {
 # ════════════════════════════════════════════════════════════════════════════════
 resource "aws_wafv2_web_acl" "main" {
   name        = "${local.name_prefix}-web-acl"
-  description = "WAF para ${var.project_name} — OWASP Top 10 + Known Bad Inputs"
+  description = "WAF for ${var.project_name} - OWASP Top 10 and Known Bad Inputs"
   scope       = "REGIONAL"
 
   # Accion por defecto: permitir todo lo que no matchee una regla de bloqueo
