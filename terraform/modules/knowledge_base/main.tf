@@ -51,6 +51,23 @@ resource "aws_iam_role_policy" "bedrock_kb_s3" {
   })
 }
 
+resource "aws_iam_role_policy" "bedrock_kb_embeddings" {
+  name = "${local.name_prefix}-kb-embeddings"
+  role = aws_iam_role.bedrock_kb.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "TitanEmbeddingsInvoke"
+      Effect = "Allow"
+      Action = ["bedrock:InvokeModel"]
+      Resource = [
+        "arn:aws:bedrock:${data.aws_region.current.name}::foundation-model/${var.embedding_model_id}"
+      ]
+    }]
+  })
+}
+
 resource "aws_iam_role_policy" "bedrock_kb_aoss" {
   name = "${local.name_prefix}-kb-aoss-access"
   role = aws_iam_role.bedrock_kb.id
@@ -146,9 +163,11 @@ resource "aws_opensearchserverless_access_policy" "main" {
       }
     ]
     # Principal lista los ARN de roles/usuarios con acceso a datos
+    # caller_arn: usuario/rol IAM que ejecuta Terraform — necesita acceso para crear el indice
     Principal = [
       aws_iam_role.bedrock_kb.arn,
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root",
+      data.aws_caller_identity.current.arn,
     ]
   }])
 }
@@ -169,6 +188,27 @@ resource "aws_opensearchserverless_collection" "main" {
     aws_opensearchserverless_security_policy.encryption,
     aws_opensearchserverless_security_policy.network,
     aws_opensearchserverless_access_policy.main,
+  ]
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# Indice vector en AOSS
+#
+# Bedrock KB requiere que el indice exista antes de poder crearse.
+# terraform_data ejecuta el script Python que crea el indice via HTTP + SigV4.
+# Solo se re-ejecuta si cambia el ID de la coleccion.
+# ════════════════════════════════════════════════════════════════════════════════
+resource "terraform_data" "kb_vector_index" {
+  triggers_replace = [aws_opensearchserverless_collection.main.id]
+
+  provisioner "local-exec" {
+    command = "python3 -m pip install boto3 requests requests-aws4auth --quiet --user && python3 '${path.module}/create_index.py' '${aws_opensearchserverless_collection.main.collection_endpoint}'"
+  }
+
+  depends_on = [
+    aws_opensearchserverless_collection.main,
+    aws_opensearchserverless_access_policy.main,
+    aws_iam_role_policy.bedrock_kb_aoss,
   ]
 }
 
@@ -209,6 +249,7 @@ resource "aws_bedrockagent_knowledge_base" "main" {
     aws_iam_role_policy.bedrock_kb_aoss,
     aws_opensearchserverless_access_policy.main,
     aws_opensearchserverless_collection.main,
+    terraform_data.kb_vector_index,  # indice debe existir antes de crear la KB
   ]
 }
 
