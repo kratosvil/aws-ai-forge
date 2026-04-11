@@ -62,6 +62,12 @@ resource "aws_iam_role_policy" "kb_query_policy" {
         Resource = [
           "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${local.name_prefix}-kb-query-handler*"
         ]
+      },
+      {
+        Sid      = "XRayTracingWrite"
+        Effect   = "Allow"
+        Action   = ["xray:PutTraceSegments", "xray:PutTelemetryRecords"]
+        Resource = ["*"]
       }
     ]
   })
@@ -121,6 +127,12 @@ resource "aws_iam_role_policy" "kb_sync_policy" {
         Resource = [
           "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${local.name_prefix}-kb-sync-handler*"
         ]
+      },
+      {
+        Sid      = "XRayTracingWrite"
+        Effect   = "Allow"
+        Action   = ["xray:PutTraceSegments", "xray:PutTelemetryRecords"]
+        Resource = ["*"]
       }
     ]
   })
@@ -150,6 +162,11 @@ resource "aws_lambda_function" "kb_query" {
   source_code_hash = data.archive_file.kb_query.output_base64sha256
   timeout          = 60   # RetrieveAndGenerate puede tardar varios segundos
   memory_size      = 256
+
+  # X-Ray — traza cada invocacion y la llamada a Bedrock KB
+  tracing_config {
+    mode = "Active"
+  }
 
   environment {
     variables = {
@@ -197,6 +214,11 @@ resource "aws_lambda_function" "kb_sync" {
   source_code_hash = data.archive_file.kb_sync.output_base64sha256
   timeout          = 60
   memory_size      = 128
+
+  # X-Ray — traza cada invocacion y la llamada a StartIngestionJob
+  tracing_config {
+    mode = "Active"
+  }
 
   environment {
     variables = {

@@ -171,6 +171,16 @@ resource "aws_iam_role_policy" "lambda_policy" {
         Resource = [
           "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${local.name_prefix}*:*"
         ]
+      },
+      # X-Ray — tracing distribuido para visibilidad de latencia y errores
+      {
+        Sid    = "XRayTracingWrite"
+        Effect = "Allow"
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords"
+        ]
+        Resource = ["*"] # X-Ray no soporta scope por ARN — es limitacion del servicio
       }
     ]
   })

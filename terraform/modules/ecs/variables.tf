@@ -93,3 +93,21 @@ variable "image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "min_capacity" {
+  description = "Numero minimo de tasks ECS (auto scaling)"
+  type        = number
+  default     = 1
+}
+
+variable "max_capacity" {
+  description = "Numero maximo de tasks ECS (auto scaling)"
+  type        = number
+  default     = 3
+}
+
+variable "autoscaling_cpu_target" {
+  description = "Porcentaje de CPU objetivo para el auto scaling (target tracking)"
+  type        = number
+  default     = 70
+}

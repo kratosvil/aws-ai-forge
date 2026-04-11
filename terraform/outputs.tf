@@ -47,3 +47,18 @@ output "search_endpoint" {
   description = "Endpoint de busqueda RAG — POST con {question}"
   value       = "http://${module.alb.alb_dns_name}/search"
 }
+
+output "cloudwatch_dashboard_url" {
+  description = "URL directa al CloudWatch Dashboard"
+  value       = module.monitoring.dashboard_url
+}
+
+output "sns_alarms_topic_arn" {
+  description = "ARN del SNS topic de alarmas"
+  value       = module.monitoring.sns_topic_arn
+}
+
+output "waf_web_acl_arn" {
+  description = "ARN del WAF Web ACL adjunto al ALB"
+  value       = module.waf.web_acl_arn
+}

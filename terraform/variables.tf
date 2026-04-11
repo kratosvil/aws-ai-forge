@@ -51,3 +51,9 @@ variable "log_retention_days" {
   type        = number
   default     = 7
 }
+
+variable "alarm_email" {
+  description = "Email para recibir notificaciones de alarmas CloudWatch via SNS"
+  type        = string
+  default     = "kratosvill@gmail.com"
+}

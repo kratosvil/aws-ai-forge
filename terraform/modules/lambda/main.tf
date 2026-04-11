@@ -39,6 +39,11 @@ resource "aws_lambda_function" "bedrock_handler" {
   timeout     = var.lambda_timeout
   memory_size = var.lambda_memory_mb
 
+  # X-Ray — tracing activo: captura duracion de invocacion + llamadas a Bedrock
+  tracing_config {
+    mode = "Active"
+  }
+
   environment {
     variables = {
       BEDROCK_MODEL_ID = var.bedrock_model_id

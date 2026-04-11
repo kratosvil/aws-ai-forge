@@ -108,6 +108,36 @@ module "knowledge_base" {
   s3_bucket_arn = module.s3.bucket_arn
 }
 
+# ── WAF ──────────────────────────────────────────────────────────────────────
+module "waf" {
+  source = "./modules/waf"
+
+  project_name = var.project_name
+  environment  = var.environment
+  alb_arn      = module.alb.alb_arn
+}
+
+# ── Monitoring (Dashboard + Alarms + SNS) ────────────────────────────────────
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  project_name    = var.project_name
+  environment     = var.environment
+  alarm_email     = var.alarm_email
+
+  lambda_bedrock_handler_name = module.lambda.function_name
+  lambda_kb_query_name        = module.kb_lambda.kb_query_function_name
+  lambda_kb_sync_name         = module.kb_lambda.kb_sync_function_name
+
+  ecs_cluster_name = module.ecs.cluster_name
+  ecs_service_name = module.ecs.service_name
+
+  alb_arn          = module.alb.alb_arn
+  target_group_arn = module.alb.target_group_arn
+
+  log_retention_days = var.log_retention_days
+}
+
 # ── KB Lambda (query + sync) ──────────────────────────────────────────────────
 module "kb_lambda" {
   source = "./modules/kb_lambda"
