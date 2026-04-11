@@ -56,10 +56,11 @@ resource "aws_ecs_task_definition" "api" {
       ]
 
       environment = [
-        { name = "LAMBDA_FUNCTION_NAME", value = var.lambda_function_name },
-        { name = "S3_BUCKET_NAME", value = var.s3_bucket_name },
-        { name = "AWS_DEFAULT_REGION", value = data.aws_region.current.name },
-        { name = "PORT", value = tostring(var.container_port) }
+        { name = "LAMBDA_FUNCTION_NAME",    value = var.lambda_function_name },
+        { name = "KB_LAMBDA_FUNCTION_NAME", value = var.kb_lambda_function_name },
+        { name = "S3_BUCKET_NAME",          value = var.s3_bucket_name },
+        { name = "AWS_DEFAULT_REGION",      value = data.aws_region.current.name },
+        { name = "PORT",                    value = tostring(var.container_port) }
       ]
 
       # Configuración de logs — envía stdout/stderr a CloudWatch

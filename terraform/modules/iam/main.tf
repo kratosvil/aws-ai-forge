@@ -98,13 +98,14 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
           "${var.s3_bucket_arn}/*"
         ]
       },
-      # Lambda — invocar únicamente la función de este proyecto
+      # Lambda — invocar las funciones de este proyecto
       {
-        Sid    = "LambdaInvokeBedrock"
+        Sid    = "LambdaInvokeFunctions"
         Effect = "Allow"
         Action = ["lambda:InvokeFunction"]
         Resource = [
-          "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${local.name_prefix}-bedrock-handler"
+          "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${local.name_prefix}-bedrock-handler",
+          "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${local.name_prefix}-kb-query-handler"
         ]
       },
       # CloudWatch Logs — escritura en log groups del proyecto

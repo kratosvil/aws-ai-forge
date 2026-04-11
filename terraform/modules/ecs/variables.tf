@@ -38,6 +38,11 @@ variable "lambda_function_name" {
   type        = string
 }
 
+variable "kb_lambda_function_name" {
+  description = "Nombre de la Lambda kb-query-handler — pasado como variable de entorno al contenedor"
+  type        = string
+}
+
 variable "s3_bucket_name" {
   description = "Nombre del bucket S3 de documentos — pasado como variable de entorno al contenedor"
   type        = string

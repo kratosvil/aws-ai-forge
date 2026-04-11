@@ -96,4 +96,28 @@ module "ecs" {
   log_retention_days     = var.log_retention_days
   target_group_arn       = module.alb.target_group_arn
   alb_sg_id              = module.alb.alb_sg_id
+  kb_lambda_function_name = module.kb_lambda.kb_query_function_name
+}
+
+# ── Bedrock Knowledge Base ────────────────────────────────────────────────────
+module "knowledge_base" {
+  source = "./modules/knowledge_base"
+
+  project_name = var.project_name
+  environment  = var.environment
+  s3_bucket_arn = module.s3.bucket_arn
+}
+
+# ── KB Lambda (query + sync) ──────────────────────────────────────────────────
+module "kb_lambda" {
+  source = "./modules/kb_lambda"
+
+  project_name       = var.project_name
+  environment        = var.environment
+  knowledge_base_id  = module.knowledge_base.knowledge_base_id
+  data_source_id     = module.knowledge_base.data_source_id
+  s3_bucket_arn      = module.s3.bucket_arn
+  s3_bucket_name     = module.s3.bucket_name
+  bedrock_model_id   = var.bedrock_model_id
+  log_retention_days = var.log_retention_days
 }

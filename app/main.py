@@ -25,10 +25,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("aws-ai-forge")
 
-S3_BUCKET_NAME      = os.environ["S3_BUCKET_NAME"]
-LAMBDA_FUNCTION_NAME = os.environ["LAMBDA_FUNCTION_NAME"]
-AWS_REGION          = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
-VERSION             = os.environ.get("APP_VERSION", "0.1.0")
+S3_BUCKET_NAME         = os.environ["S3_BUCKET_NAME"]
+LAMBDA_FUNCTION_NAME   = os.environ["LAMBDA_FUNCTION_NAME"]
+KB_LAMBDA_FUNCTION_NAME = os.environ["KB_LAMBDA_FUNCTION_NAME"]
+AWS_REGION             = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+VERSION                = os.environ.get("APP_VERSION", "0.1.0")
 
 s3     = boto3.client("s3",     region_name=AWS_REGION)
 lambda_ = boto3.client("lambda", region_name=AWS_REGION)
@@ -71,6 +72,27 @@ class HealthResponse(BaseModel):
     service: str
 
 
+class SearchRequest(BaseModel):
+    question: str = Field(
+        ...,
+        min_length=3,
+        max_length=1000,
+        description="Pregunta en lenguaje natural sobre la base de conocimiento indexada",
+    )
+
+
+class Citation(BaseModel):
+    text: str
+    source: str
+
+
+class SearchResponse(BaseModel):
+    answer: str
+    citations: list[Citation]
+    retrieved_chunks: int
+    model_id: str
+
+
 class VersionResponse(BaseModel):
     service: str
     version: str
@@ -109,6 +131,37 @@ def read_document_from_s3(document_key: str) -> str:
         )
 
     return response["Body"].read().decode("utf-8", errors="replace")
+
+
+def invoke_kb_lambda(question: str) -> dict:
+    """Invoca la Lambda kb-query-handler y retorna la respuesta parseada."""
+    payload = json.dumps({"question": question})
+
+    try:
+        response = lambda_.invoke(
+            FunctionName=KB_LAMBDA_FUNCTION_NAME,
+            InvocationType="RequestResponse",
+            Payload=payload.encode("utf-8"),
+        )
+    except ClientError as e:
+        logger.error("Error invocando KB Lambda: %s", str(e))
+        raise HTTPException(status_code=500, detail="Error al invocar el servicio de busqueda.")
+
+    result = json.loads(response["Payload"].read())
+
+    if result.get("statusCode") != 200:
+        status = result.get("statusCode", 500)
+        error  = result.get("error", "Error desconocido en KB Lambda.")
+        logger.error("KB Lambda retorno error %d: %s", status, error)
+
+        if status == 429:
+            raise HTTPException(status_code=429, detail=error)
+        if status == 404:
+            raise HTTPException(status_code=404, detail=error)
+
+        raise HTTPException(status_code=502, detail=error)
+
+    return result
 
 
 def invoke_bedrock_lambda(question: str, context: str) -> dict:
@@ -191,6 +244,33 @@ def ask(request: AskRequest):
         document_key=request.document_key,
         input_tokens=result["input_tokens"],
         output_tokens=result["output_tokens"],
+    )
+
+
+@app.post("/search", response_model=SearchResponse, tags=["ai"])
+def search(request: SearchRequest):
+    """
+    RAG sobre la base de conocimiento completa.
+    No requiere document_key — busca semanticamente en todos los documentos indexados.
+    Retorna la respuesta generada y los fragmentos recuperados con su fuente S3.
+    """
+    logger.info(
+        "Request /search — question_length=%d",
+        len(request.question),
+    )
+
+    result = invoke_kb_lambda(request.question)
+
+    logger.info(
+        "Busqueda completada — chunks_recuperados=%d",
+        result.get("retrieved_chunks", 0),
+    )
+
+    return SearchResponse(
+        answer=result["answer"],
+        citations=[Citation(**c) for c in result.get("citations", [])],
+        retrieved_chunks=result.get("retrieved_chunks", 0),
+        model_id=result["model_id"],
     )
 
 
