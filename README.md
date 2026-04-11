@@ -1,108 +1,108 @@
 # aws-ai-forge
 
-Plataforma de consulta inteligente sobre documentos desplegada en AWS, construida con infraestructura como código y arquitectura serverless desacoplada.
+Intelligent document querying platform deployed on AWS, built with infrastructure as code and a decoupled serverless architecture.
 
-## Arquitectura
+## Architecture
 
 ```
 Internet (HTTP:80)
         ↓
-Application Load Balancer  (subnets públicas)
+Application Load Balancer  (public subnets)
         ↓
-FastAPI — ECS Fargate      (subnets privadas)
-        ├── Amazon S3      (lectura de documentos)
-        └── AWS Lambda     (invocación desacoplada)
+FastAPI — ECS Fargate      (private subnets)
+        ├── Amazon S3      (document storage & retrieval)
+        └── AWS Lambda     (decoupled invocation)
                 ↓
-        Amazon Bedrock     (Claude 3 Haiku — generación de respuesta)
+        Amazon Bedrock     (Claude 3 Haiku — response generation)
                 ↓
-        CloudWatch Logs    (observabilidad)
+        CloudWatch Logs    (observability)
 ```
 
-El tráfico interno entre ECS, Lambda, S3 y Bedrock nunca sale a internet — transita exclusivamente por **VPC Endpoints**, eliminando la necesidad de NAT Gateway.
+Internal traffic between ECS, Lambda, S3 and Bedrock never leaves AWS — it flows exclusively through **VPC Endpoints**, eliminating the need for a NAT Gateway.
 
-## Stack tecnológico
+## Tech Stack
 
-| Capa | Tecnología |
-|------|-----------|
-| IaC | Terraform >= 1.5 (estructura modular) |
-| Cómputo API | ECS Fargate |
-| Cómputo IA | AWS Lambda (Python 3.12) |
+| Layer | Technology |
+|-------|-----------|
+| IaC | Terraform >= 1.5 (modular structure) |
+| API Compute | ECS Fargate |
+| AI Compute | AWS Lambda (Python 3.12) |
 | API Framework | FastAPI + Uvicorn |
-| Modelo IA | Amazon Bedrock — Claude 3 Haiku |
-| Registro de contenedores | Amazon ECR |
-| Almacenamiento | Amazon S3 |
-| Red | VPC, ALB, VPC Endpoints (sin NAT Gateway) |
-| Seguridad | IAM mínimo privilegio, SSE-S3, SGs restrictivos |
-| Observabilidad | CloudWatch Logs |
-| Contenedor | Docker multi-stage, usuario no-root |
+| AI Model | Amazon Bedrock — Claude 3 Haiku |
+| Container Registry | Amazon ECR |
+| Storage | Amazon S3 |
+| Networking | VPC, ALB, VPC Endpoints (no NAT Gateway) |
+| Security | Least-privilege IAM, SSE-S3, restrictive Security Groups |
+| Observability | CloudWatch Logs |
+| Container | Docker multi-stage build, non-root user |
 
-## Estructura del repositorio
+## Repository Structure
 
 ```
 aws-ai-forge/
 ├── app/
-│   ├── main.py              # FastAPI — endpoints /health /ask /version
-│   ├── Dockerfile           # Multi-stage build, usuario no-root
+│   ├── main.py              # FastAPI — /health /ask /version endpoints
+│   ├── Dockerfile           # Multi-stage build, non-root user
 │   └── requirements.txt
 ├── lambda/
-│   └── bedrock_handler.py   # Invoca Bedrock con contexto del documento
+│   └── bedrock_handler.py   # Invokes Bedrock with document context
 └── terraform/
-    ├── main.tf              # Orquestador — solo llama módulos
+    ├── main.tf              # Orchestrator — calls modules only
     ├── variables.tf
     ├── outputs.tf
     └── modules/
         ├── vpc/             # VPC, subnets, IGW, route tables, VPC Endpoints
         ├── alb/             # Application Load Balancer, target group, listener
         ├── iam/             # ECS Execution Role, ECS Task Role, Lambda Role
-        ├── s3/              # Bucket con SSE, versionado, lifecycle, deny non-TLS
-        ├── ecr/             # Repositorio con tags inmutables y scan on push
-        ├── lambda/          # Función Lambda + CloudWatch Log Group
-        └── ecs/             # Cluster, task definition, service Fargate
+        ├── s3/              # Bucket with SSE, versioning, lifecycle, deny non-TLS
+        ├── ecr/             # Repository with immutable tags and scan on push
+        ├── lambda/          # Lambda function + CloudWatch Log Group
+        └── ecs/             # Cluster, task definition, Fargate service
 ```
 
-## Endpoints
+## API Endpoints
 
-| Method | Endpoint | Descripción |
+| Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/health` | Health check — usado por ALB y ECS |
-| `GET` | `/version` | Versión y región del servicio |
-| `POST` | `/ask` | Consulta inteligente sobre un documento |
+| `GET` | `/health` | Health check — used by ALB and ECS |
+| `GET` | `/version` | Service version and region |
+| `POST` | `/ask` | Intelligent query over a document |
 
-### Ejemplo de uso
+### Usage Example
 
 ```bash
-# Subir un documento a S3
-aws s3 cp mi-documento.txt s3://<bucket-name>/docs/mi-documento.txt
+# Upload a document to S3
+aws s3 cp my-document.txt s3://<bucket-name>/docs/my-document.txt
 
-# Consultar sobre el documento
+# Query the document
 curl -X POST http://<alb-dns>/ask \
   -H "Content-Type: application/json" \
-  -d '{"question": "¿Qué dice el documento sobre X?", "document_key": "docs/mi-documento.txt"}'
+  -d '{"question": "What does the document say about X?", "document_key": "docs/my-document.txt"}'
 ```
 
-### Respuesta
+### Response
 
 ```json
 {
-  "answer": "Según el documento...",
+  "answer": "According to the document...",
   "model_id": "anthropic.claude-3-haiku-20240307-v1:0",
-  "document_key": "docs/mi-documento.txt",
+  "document_key": "docs/my-document.txt",
   "input_tokens": 173,
   "output_tokens": 108
 }
 ```
 
-El modelo responde **únicamente** con información presente en el documento. Si la respuesta no está en el contexto, lo indica explícitamente.
+The model answers **only** based on the provided document context. If the answer is not in the document, it states so explicitly — no hallucinations.
 
-## Despliegue
+## Deployment
 
-### Prerrequisitos
+### Prerequisites
 
-- AWS CLI configurado (`aws configure`)
+- AWS CLI configured (`aws configure`)
 - Terraform >= 1.5
 - Docker
 
-### 1. Infraestructura
+### 1. Infrastructure
 
 ```bash
 cd terraform
@@ -111,19 +111,19 @@ terraform plan
 terraform apply
 ```
 
-### 2. Imagen Docker
+### 2. Docker Image
 
 ```bash
-# Login a ECR
+# Login to ECR
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ecr-url>
 
-# Build, tag y push
+# Build, tag and push
 docker build -t aws-ai-forge-dev-api ./app
 docker tag aws-ai-forge-dev-api:latest <ecr-url>:latest
 docker push <ecr-url>:latest
 ```
 
-### 3. Deploy al servicio ECS
+### 3. Deploy to ECS
 
 ```bash
 aws ecs update-service \
@@ -136,40 +136,40 @@ aws ecs update-service \
 ### Outputs
 
 ```bash
-terraform output api_endpoint       # URL pública del servicio
-terraform output ecr_repository_url # URL del repositorio ECR
-terraform output s3_bucket_name     # Nombre del bucket de documentos
+terraform output api_endpoint       # Public service URL
+terraform output ecr_repository_url # ECR repository URL
+terraform output s3_bucket_name     # Documents bucket name
 ```
 
-## Decisiones de arquitectura
+## Architecture Decisions
 
-- **Sin NAT Gateway** — VPC Endpoints para S3 (Gateway), ECR, CloudWatch, Bedrock y Lambda. Reduce costo ~$32/mes y mantiene el tráfico dentro de la red de AWS.
-- **Lambda como intermediario** — desacopla ECS de Bedrock. Permite escalar o cambiar el modelo sin modificar la API.
-- **Documentos transversales** — el sistema acepta cualquier archivo subido a S3. El usuario especifica `document_key` en el request.
-- **IAM mínimo privilegio** — cada rol tiene permisos scoped al ARN exacto del recurso que necesita. Sin wildcards abiertos.
-- **Tags inmutables en ECR** — garantiza trazabilidad de imágenes desplegadas.
-- **Health check doble** — a nivel de contenedor (Python urllib) y a nivel de ALB (target group).
+- **No NAT Gateway** — VPC Endpoints for S3 (Gateway), ECR, CloudWatch, Bedrock and Lambda. Saves ~$32/month and keeps all traffic within AWS network.
+- **Lambda as intermediary** — decouples ECS from Bedrock. Model can be swapped or scaled without touching the API layer.
+- **Document-agnostic design** — the system accepts any file uploaded to S3. The caller specifies `document_key` per request, enabling multi-document support.
+- **Least-privilege IAM** — each role has permissions scoped to the exact ARN of the resource it needs. No open wildcards.
+- **Immutable ECR tags** — guarantees traceability of deployed images.
+- **Dual health checks** — container-level (Python urllib) and ALB-level (target group), ensuring reliable zero-downtime deployments.
 
-## Seguridad
+## Security Highlights
 
-- S3: acceso público bloqueado en los 4 niveles, SSE-S3 (AES256), bucket policy que deniega requests sin TLS
-- ECR: `scan_on_push = true`, tags `IMMUTABLE`, repository policy restringida a la cuenta
-- IAM: tres roles separados (execution, task, lambda) con permisos mínimos y scoped por ARN
-- ECS: contenedor corre como usuario no-root (uid 1001), sin IP pública, inbound solo desde ALB SG
-- FastAPI: Swagger deshabilitado, exception handler global sin stack traces en respuestas
+- **S3**: public access blocked on all 4 levels, SSE-S3 (AES256), bucket policy denying non-TLS requests
+- **ECR**: `scan_on_push = true`, `IMMUTABLE` tags, repository policy restricted to account
+- **IAM**: three separate roles (execution, task, lambda) with ARN-scoped least-privilege permissions
+- **ECS**: non-root container user (uid 1001), no public IP, inbound only from ALB Security Group
+- **FastAPI**: Swagger UI disabled, global exception handler with no stack traces in responses
 
-## Upgrades planificados
+## Planned Upgrades
 
-- **RAG con índice automático** — Lambda indexa documentos al subirse a S3 via `s3:ObjectCreated`. Las consultas buscan semánticamente sin especificar `document_key`. Implementación con Amazon Bedrock Knowledge Bases.
-- **CloudWatch Dashboard** — panel con métricas de tokens, latencia y errores via módulo Terraform.
+- **Automatic RAG indexing** — Lambda indexes documents on S3 upload (`s3:ObjectCreated`). Queries work without specifying `document_key`. Implementation with Amazon Bedrock Knowledge Bases.
+- **CloudWatch Dashboard** — visual metrics panel: token usage, Lambda latency, ECS errors, ALB health checks — via a new Terraform `dashboard` module.
 
-## Costo estimado (sesión de lab)
+## Estimated Lab Cost
 
-| Recurso | Costo/hora |
+| Resource | Cost/hour |
 |---------|-----------|
 | VPC Interface Endpoints (5 × 2 AZs) | ~$0.10/hr |
 | ALB | ~$0.008/hr |
 | ECS Fargate (0.25 vCPU / 512 MB) | ~$0.012/hr |
-| Lambda + Bedrock (por uso) | ~$0.0002/consulta |
+| Lambda + Bedrock (per use) | ~$0.0002/query |
 
-**Ejecutar `terraform destroy` al finalizar el lab.**
+> Run `terraform destroy` after finishing the lab to stop all charges.
