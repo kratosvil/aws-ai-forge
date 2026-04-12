@@ -2,6 +2,10 @@
 
 Fully managed RAG (Retrieval-Augmented Generation) platform on AWS. Documents uploaded to S3 are automatically indexed and made queryable in natural language — no document key required.
 
+![AWS AI Forge — Architecture Overview](images/architecture-overview.jpg)
+
+> End-to-end RAG platform: automatic document ingestion via S3, Bedrock Knowledge Bases + OpenSearch Serverless, WAF edge security, Zero Trust isolation, Spot-based cost optimization and live inference with citations.
+
 ## Architecture
 
 ```
