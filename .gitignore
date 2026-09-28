@@ -40,3 +40,6 @@ terraform/modules/lambda/*.zip
 # OS
 .DS_Store
 Thumbs.db
+
+# Lambda build artifacts
+*.zip
